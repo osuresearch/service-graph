@@ -1,0 +1,26 @@
+# dependencies
+/node_modules
+packages/**/node_modules
+
+# We don't use zero installs
+.yarn/*
+
+# Whitelisting plugins for workspace tools
+# until we can move over to Yarn 4 for it to be built in
+!.yarn/plugins
+
+# Compiled files and definitions
+*.js
+!scripts/*.js
+!*.config.js
+*.d.ts
+*.tsbuildinfo
+packages/**/dist
+
+# CDK staging
+cdk.out
+.cdk.staging
+
+.env
+.env.local
+.idea

@@ -1,0 +1,55 @@
+{
+  "name": "@osuresearch/service-graph",
+  "packageManager": "yarn@3.5.0",
+  "private": true,
+  "description": "",
+  "bin": {
+    "graphql-api": "bin/graphql-api.js"
+  },
+  "scripts": {
+    "build:cdk": "tsc ./bin/*.ts ./lib/*.ts ",
+    "build": "yarn workspaces foreach run build",
+    "test": "jest --setupFiles dotenv/config",
+    "watch": "tsc --watch",
+    "check": "tsc --noEmit",
+    "predeploy": "yarn build",
+    "deploy:dev": "tsc && cdk deploy --context env=dev --all",
+    "destroy:dev": "cdk destroy --context env=dev --all",
+    "postdeploy": "rm -rf cdk-out"
+  },
+  "keywords": [],
+  "author": "Chase McManning <mcmanning.1@osu.edu>",
+  "license": "MIT",
+  "dependencies": {
+    "@apollo/gateway": "^2.4.0",
+    "@apollo/subgraph": "^2.4.0",
+    "@envelop/apollo-federation": "^3.0.6",
+    "@graphql-yoga/plugin-apollo-inline-trace": "^1.7.3",
+    "@types/aws-lambda": "^8.10.114",
+    "aws-cdk-lib": "^2.70.0",
+    "aws-lambda": "^1.0.7",
+    "aws-xray-sdk": "^3.4.1",
+    "constructs": "^10.1.301",
+    "dotenv": "^16.0.3",
+    "graphql": "^16.6.0",
+    "graphql-yoga": "^3.7.3",
+    "source-map-support": "^0.5.21",
+    "tsc": "^2.0.4",
+    "typescript": "^5.0.2"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^18.15.10",
+    "aws-cdk": "^2.70.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.0.5",
+    "ts-node": "^10.9.1"
+  },
+  "main": "index.js",
+  "workspaces": {
+    "packages": [
+      "packages/shared",
+      "packages/*"
+    ]
+  }
+}
