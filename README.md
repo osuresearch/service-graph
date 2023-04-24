@@ -9,6 +9,8 @@ A monorepo of GraphQL services built on AWS.
 
 >This repository **does not** contain application domain services used by the Office of Research.
 
+Usage of individual services are detailed in their package READMEs.
+
 ### Gateway service
 
 Discovers and catalogs supported GraphQL microservices within AWS and provides a centralized federated gateway for handling authentication, authorization, health checking, and asynchronous cross-service request fulfillment.
