@@ -206,15 +206,15 @@ You may also provide full JSON as the column value. This will automatically be t
 
 ```sql
 select
-	'$.attributes.Submitter' = (
-		select
-			'Person' as [type],
-			n.id as [id],
-			n.fullName as [name]
-		from users u
-		where u.id = s.submitterId
-		for json auto
-	),
+  '$.attributes.Submitter' = (
+    select
+      'Person' as [type],
+      n.id as [id],
+      n.fullName as [name]
+    from users u
+    where u.id = s.submitterId
+    for json auto
+  ),
   ...
 from
   submission s
@@ -222,6 +222,84 @@ from
 
 If your source data does not meet this format, use a view or add triggers to populate a separate table.
 
+## Full annotated example
+
+Here's an example of a generic form (IRB, requisition, timesheet, etc) with the attributes:
+1. Current submission status (e.g. unsubmitted, submitted, approved, etc)
+2. Who submitted the form
+3. Who needs to approve the form
+4. Additional submitter notes that could be searched on
+5. Due date for approval
+
+```sql
+select
+  -- Summary information --
+  submissionId as [id], -- GUID. Make sure this is unique across *all* resources
+                        -- indexed across the enterprise
+  s.title as [name],
+  s.summary as [description],
+  s.summary as [textDescription],
+
+  -- Hierarchical categorization --
+
+  -- Example: Office of Research > Forms > Equipment Rental
+  s.[department] as [categoryLvl1],
+  'Forms' as[categoryLvl2],
+  s.[purpose] as [categoryLvl3],
+  '' as [categoryLvl4],
+
+  -- Dates --
+  -- CRUD dates are not *indexing* dates but actual data modification dates.
+  -- Since data can be reindexed on-demand, these dates must come from
+  -- your source data. Make sure these are all ISO8601
+  convert(varchar(19), s.createdDate, 126) as [createdDate],
+  convert(varchar(19), s.updatedDate, 126) as [updatedDate],
+  convert(varchar(19), s.deletedDate, 126) as [deletedDate]
+
+  -- Attributes --
+
+  -- Order matters! Earlier attributes are displayed before later
+  -- ones in hit summaries *unless* the order is modified due to
+  -- attribute relevancy matching with full text searches or faceting.
+
+  -- You can supply atomics as JSON Path columns to each individual field.
+  'Text' as '$.attributes.Status[0].type',
+  s.[status] as '$.attributes.Status[0].text',
+
+  -- Use null for an atomic type name to indicate that it should be ignored
+  -- by the transformer, regardless of what the rest of the attribute fields are.
+  iif(dueDate is null, null, 'DateTime') as '$.attributes.Due Date[0].type',
+  convert(varchar(19), dueDate, 126) as '$.attributes.Due Date[0].dateTime'
+
+  -- Types may still be constructed using JSON columns as long as the
+  -- constructed type conforms to one of the @osuresearch/types atomics.
+  -- The transformer will understand and convert if it's valid JSON.
+  '$.attributes.Submitter' = (
+    select
+      'Person' as [type],
+      n.id as [id],
+      n.fullName as [name]
+    from users u
+    where u.id = s.submitterId
+    for json auto
+  ),
+
+  '$.attributes.Approver' = (
+    select
+      'Person' as [type],
+      n.id as [id],
+      n.fullName as [name]
+    from users u
+    where u.id = s.approverId
+    for json auto
+  ),
+
+  'Text' as '$.attributes.Group[0].type',
+  s.reviewGroupId as '$.attributes.Group[0].text',
+
+from
+  Demo.dbo.Form f
+```
 
 # On-demand ETL
 
