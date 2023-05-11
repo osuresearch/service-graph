@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "build": "tsc",
-    "clean": "rm -rf dist/*"
+    "clean": "rimraf \"dist\" \"src/*.js\" \"src/*.d.ts\""
   },
   "dependencies": {
     "@apollo/gateway": "^2.4.0",
@@ -29,5 +29,8 @@
   "description": "",
   "installConfig": {
     "hoistingLimits": "workspaces"
+  },
+  "devDependencies": {
+    "rimraf": "^5.0.0"
   }
 }

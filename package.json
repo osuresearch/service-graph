@@ -8,7 +8,8 @@
   },
   "scripts": {
     "build:cdk": "tsc ./bin/*.ts ./lib/*.ts ",
-    "build": "yarn workspaces foreach run build",
+    "build": "yarn workspaces foreach -vt run build",
+    "clean": "yarn workspaces foreach -v run clean",
     "test": "jest --setupFiles dotenv/config",
     "watch": "tsc --watch",
     "check": "tsc --noEmit",
