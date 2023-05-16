@@ -312,3 +312,55 @@ yarn ts-node packages/ingest/src/ondemand.ts your-index YourDb.dbo.YourTable
 ```
 
 Where `your-index` is the resource index you want to use in OpenSearch and `YourDb.dbo.YourTable` is your SQL table or view to index.
+
+# Using the Batch Queue
+
+Instead of going through the GraphQL API, you can send a message directly to the batching queue on SQS that contains your target index, source table, and list of resource IDs to reindex. 
+
+In PHP, this would look something like the following:
+
+```php
+<?php
+$client = new SqsClient([
+  'profile' => 'default',
+  'region' => 'us-east-2',
+  'version' => '2012-11-05'
+]);
+
+$params = [
+  'MessageAttributes' => [
+    // The index you want to write to.
+    // If this does not exist it will be automatically
+    // created using the standard mapping.
+    'Index' => [
+      'DataType' => 'String',
+      'StringValue' => 'people-dev',
+    ],
+    // Source table or view to read from. 
+    'Table' => [
+      'DataType' => 'String',
+      'StringValue' => 'MyDB.dbo.VW_Users'
+    ],
+    // Any other included attributes will be
+    // logged alongside the indexing operation(s).
+  ],
+
+  // Provide a comma-delimited list of resource IDs
+  // as your body for indexing. 
+  // This queue does not support "index everything"
+  // operations, so at least one ID is required. 
+  'MessageBody' => '
+    1,2,3,4,5
+  ',
+  'QueueUrl' => 'QUEUE_URL'
+];
+
+try {
+  $result = $client->sendMessage($params);
+  var_dump($result);
+} 
+catch (AwsException $e) {
+  // Handle your error 
+  error_log($e->getMessage());
+}
+```

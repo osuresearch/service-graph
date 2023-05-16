@@ -18,6 +18,8 @@
     "@aws-sdk/credential-provider-node": "^3.303.0",
     "@envelop/apollo-tracing": "^4.0.6",
     "@graphql-yoga/plugin-apollo-inline-trace": "^1.8.0",
+    "@middy/core": "^4.4.1",
+    "@middy/secrets-manager": "^4.4.1",
     "@opensearch-project/opensearch": "^2.2.0",
     "@osuresearch/api-shared": "1.0.0",
     "@osuresearch/types": "^1.0.0",

@@ -4,11 +4,14 @@ import { Construct } from 'constructs';
 import { Code, Function, FunctionProps, Runtime, Tracing } from 'aws-cdk-lib/aws-lambda';
 import { LambdaRestApi } from 'aws-cdk-lib/aws-apigateway';
 import { User } from 'aws-cdk-lib/aws-iam';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Vpc, SecurityGroup, ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as dotenv from 'dotenv';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 function env(name: string): string {
   const value = process.env[name];
@@ -94,26 +97,35 @@ export class ServicesStack extends Stack {
 
     const ingestQueue = new Queue(this, 'ingestQueue', {
       queueName: 'GraphQLIngestQueue',
+      // AWS recommendation: Use 6x the function timeout.
+      visibilityTimeout: Duration.seconds(30 * 6),
     });
 
-    // TODO: Will need credentials to OpenSearch
     const batchFunction = new Function(this, 'ingestBatching', {
       code,
       handler: 'dist/batch.handler',
       runtime: Runtime.NODEJS_16_X,
       tracing: Tracing.ACTIVE,
-      // Note that timeout cannot exceed the connected SQS
-      // service's visibility timeout (default to 30s)
       timeout: Duration.seconds(30),
+      environment: {
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
+      },
       vpc,
       securityGroups: [securityGroup],
     });
+
+    // TODO: Configurable
+    const secret = secretsmanager.Secret.fromSecretAttributes(this, 'ImportedSecret', {
+      secretPartialArn: 'arn:aws:secretsmanager:us-east-2:945771327719:secret:dev/service-graph/ingest',
+    });
+
+    secret.grantRead(ingestFunction);
 
     batchFunction.addEventSource(new SqsEventSource(ingestQueue));
 
     ingestQueue.grantSendMessages(ingestFunction);
     ingestQueue.grantConsumeMessages(batchFunction);
-
+    
     // TODO: Dead letter queue for reporting batching issues.
   }
 }

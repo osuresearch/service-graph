@@ -24,6 +24,7 @@
   "dependencies": {
     "@apollo/gateway": "^2.4.0",
     "@apollo/subgraph": "^2.4.0",
+    "@aws-sdk/client-secrets-manager": "^3.329.0",
     "@envelop/apollo-federation": "^3.0.6",
     "@graphql-yoga/plugin-apollo-inline-trace": "^1.7.3",
     "@types/aws-lambda": "^8.10.114",
