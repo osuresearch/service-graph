@@ -23,9 +23,15 @@ export async function bulkRebuild(
   await rebuild(index);
 
   // Pull down everything unfiltered.
-  const query = `select * from ${table}`;
+  const query = `SELECT * FROM ${table}`;
 
   return batchFromQuery(index, query);
+}
+
+function isValidUUIDv4(uuid: string) {
+  return uuid.match(
+    /^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i
+  );
 }
 
 /**
@@ -38,9 +44,19 @@ export async function bulkRebuild(
 export async function bulkUpsert(
   index: string,
   table: string,
-  ids: string[]
+  uuids: string[]
 ) {
+  // Note there's not a good solution in 2023 (still...)
+  // for handling IN clauses with string IDs so I sanitize it here.
+  // Ref: https://github.com/tediousjs/node-mssql/issues/313
+  const sanitizedIds = uuids.filter(isValidUUIDv4).join("','");
+  if (sanitizedIds.length < 1) {
+    return;
+  }
 
+  const query = `SELECT * FROM ${table} WHERE [id] IN ('` + sanitizedIds + `')`;
+
+  return batchFromQuery(index, query);
 }
 
 async function batchFromQuery(index: string, query: string) {
@@ -140,8 +156,8 @@ async function batchFromQuery(index: string, query: string) {
     });
   }
   catch (e) {
-    console.log(e);
     console.error(e);
+    throw e;
   }
   finally {
     console.log('disconnect services');

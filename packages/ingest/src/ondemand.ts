@@ -1,12 +1,5 @@
-import fs from 'fs';
 import path from 'path';
-import sql from 'mssql';
-import { connect as OSConnect, disconnect as OSDisconnect, rebuild, bulk } from './opensearch';
-import { connect as MSSQLConnect, disconnect as MSSQLDisconnect, batch } from './mssql';
-import { Resource } from './types';
-
 import * as dotenv from 'dotenv';
-import { Atom } from '@osuresearch/types';
 import { bulkRebuild } from './bulk';
 
 // Load .env from monorepo root.

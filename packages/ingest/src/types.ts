@@ -16,10 +16,10 @@ export type AttributeMap = Record<string, AnyAtom[]>;
  * Hierarchical categorization of an entity
  */
 export type Categorized = {
-  categoryLvl1: string
-  categoryLvl2?: string
-  categoryLvl3?: string
-  categoryLvl4?: string
+  categoryLvl1: string | string[]
+  categoryLvl2?: string | string[]
+  categoryLvl3?: string | string[]
+  categoryLvl4?: string | string[]
 }
 
 /**

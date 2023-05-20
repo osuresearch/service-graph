@@ -12,6 +12,7 @@ packages/**/node_modules
 # Compiled files and definitions
 *.js
 !scripts/*.js
+!**/tests/*.js
 !*.config.js
 *.d.ts
 *.tsbuildinfo

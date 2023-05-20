@@ -1,9 +1,9 @@
 import * as path from 'path';
-import { Duration, Stack, StackProps } from 'aws-cdk-lib';
+import { Duration, SecretValue, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Code, Function, FunctionProps, Runtime, Tracing } from 'aws-cdk-lib/aws-lambda';
 import { LambdaRestApi } from 'aws-cdk-lib/aws-apigateway';
-import { User } from 'aws-cdk-lib/aws-iam';
+import { Effect, Policy, PolicyStatement, User } from 'aws-cdk-lib/aws-iam';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Vpc, SecurityGroup, ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
@@ -41,7 +41,7 @@ export class ServicesStack extends Stack {
       env('SECURITY_GROUP_ID'),
     );
 
-    this.addService('graphqlSearch', 'search');
+    // this.addService('graphqlSearch', 'search');
 
     this.addIngestService(vpc, securityGroup);
   }
@@ -109,19 +109,42 @@ export class ServicesStack extends Stack {
       timeout: Duration.seconds(30),
       environment: {
         AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
+        INTEGRATION_SECRETS_ID: 'dev/ingest/integrations',
       },
       vpc,
       securityGroups: [securityGroup],
     });
 
-    // TODO: Configurable
-    const secret = secretsmanager.Secret.fromSecretAttributes(this, 'ImportedSecret', {
-      secretPartialArn: 'arn:aws:secretsmanager:us-east-2:945771327719:secret:dev/service-graph/ingest',
+    const secret = new secretsmanager.Secret(this, 'ingestIntegrations', {
+      secretName: 'dev/ingest/integrations',
+      secretObjectValue: {
+        openSearchServer: SecretValue.unsafePlainText('FIXME'),
+        openSearchUser: SecretValue.unsafePlainText('FIXME'),
+        openSearchPass: SecretValue.unsafePlainText('FIXME'),
+        sqlServer: SecretValue.unsafePlainText('FIXME'),
+        sqlUser: SecretValue.unsafePlainText('FIXME'),
+        sqlPass: SecretValue.unsafePlainText('FIXME'),
+        sqlDatabase: SecretValue.unsafePlainText('FIXME'),
+      }
     });
 
-    secret.grantRead(ingestFunction);
+    // batchFunction.role?.attachInlinePolicy(
+    //   new Policy(this, 'IntegrationsSecretsRead', {
+    //     statements: [
+    //       new PolicyStatement({
+    //         effect: Effect.ALLOW,
+    //         resources: [secret.secretArn],
+    //         actions: [
+    //           'secretsmanager:DescribeSecret',
+    //           'secretsmanager:GetSecretValue',
+    //         ]
+    //       })
+    //     ]
+    //   }),
+    // );
 
     batchFunction.addEventSource(new SqsEventSource(ingestQueue));
+    secret.grantRead(batchFunction);
 
     ingestQueue.grantSendMessages(ingestFunction);
     ingestQueue.grantConsumeMessages(batchFunction);

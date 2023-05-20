@@ -12,13 +12,17 @@ let client: Client | undefined;
 /**
  * Setup a connection between services for ETL
  */
-export async function connect() {
+export async function connect(
+  server?: string,
+  username?: string, 
+  password?: string
+) {
   if (client) {
     return client;
   }
 
   client = new Client({
-    node: process.env.OPENSEARCH_SERVER,
+    node: server ?? process.env.OPENSEARCH_SERVER,
     // ...AwsSigv4Signer({
     //   region: 'us-east-2',
     //   getCredentials: () => {
@@ -28,10 +32,15 @@ export async function connect() {
     //   },
     // }),
     auth: {
-      username: process.env.OPENSEARCH_USER as string,
-      password: process.env.OPENSEARCH_PASS as string,
+      username: username ?? process.env.OPENSEARCH_USER as string,
+      password: password ?? process.env.OPENSEARCH_PASS as string,
     },
+    requestTimeout: 10*1000,
   });
+
+  console.log('Sending info request');
+  const info = await client.info();
+  console.log(info);
 
   // TODO: Validate connections
 
@@ -54,8 +63,7 @@ export async function disconnect() {
  *
  * @param index
  */
-export async function rebuild(index: string)
-{
+export async function rebuild(index: string) {
   const client = await connect();
 
   console.log(`Deleting index ${index}...`);
@@ -93,8 +101,7 @@ export async function rebuild(index: string)
  *
  * @return number of successful resources indexed
  */
-export async function bulk(index: string, resources: Resource[])
-{
+export async function bulk(index: string, resources: Resource[]) {
   const client = await connect();
 
   console.log(`Bulk indexing ${resources.length} resource to ${index}...`);

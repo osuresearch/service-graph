@@ -1,18 +1,59 @@
-import { Context, Handler, SQSBatchItemFailure, SQSBatchResponse, SQSEvent } from 'aws-lambda';
+import { Context as LambdaContext, Handler, SQSBatchItemFailure, SQSBatchResponse, SQSEvent } from 'aws-lambda';
 import {
   SecretsManagerClient,
   GetSecretValueCommand,
 } from '@aws-sdk/client-secrets-manager';
 import middy from '@middy/core';
 import secretsManager from '@middy/secrets-manager';
+import errorLogger from '@middy/error-logger';
+import { bulkUpsert } from './bulk';
+import { connect as MSSQLConnect } from './mssql';
+import { connect as OSConnect, disconnect } from './opensearch';
 
-const SECRET_ID = 'dev/service-graph/ingest';
+// Mapping of table/view to a target index with IDs to load in.
+type BatchInfo = {
+  index: string
+  ids: string[]
+  batchId: string
+}
 
-type QueuedBatch = Record<string, { index: string, ids: string[] }>;
+type TableName = string;
+
+type QueuedBatch = Record<TableName, BatchInfo>;
 
 async function processQueue(queue: QueuedBatch): Promise<SQSBatchItemFailure[]> {
   console.log('process queue', queue);
-  return [];
+
+  const failures: SQSBatchItemFailure[] = [];
+
+  for (const table in queue) {
+    const index = queue[table].index;
+    const ids = queue[table].ids;
+
+    try {
+      await bulkUpsert(index, table, ids);
+    } 
+    catch (e) {
+      failures.push({ 
+        itemIdentifier: queue[table].batchId
+      });
+    }
+  }
+
+  return failures;
+}
+
+type Context = LambdaContext & {
+  // Provided by Middy
+  serviceAccounts: {
+    openSearchServer: string
+    openSearchUser: string 
+    openSearchPass: string 
+    sqlServer: string 
+    sqlUser: string
+    sqlPass: string
+    sqlDatabase: string
+  };
 }
 
 async function batch(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
@@ -23,6 +64,28 @@ async function batch(event: SQSEvent, context: Context): Promise<SQSBatchRespons
   // tables to load into the same index. 
   let queued: QueuedBatch = {};
   let batchItemFailures: SQSBatchItemFailure[] = [];
+
+  console.log(context.serviceAccounts);
+
+  // TODO: Use middy-rds or similar.
+  // Credential management will be a bit iffy though.
+
+  // Also don't do this synchronously.
+
+  await MSSQLConnect(
+    context.serviceAccounts.sqlServer,
+    context.serviceAccounts.sqlUser,
+    context.serviceAccounts.sqlPass,
+    context.serviceAccounts.sqlDatabase
+  );
+
+  // working around a potential timeout issue for long polling.
+  disconnect();
+  await OSConnect(
+    context.serviceAccounts.openSearchServer,
+    context.serviceAccounts.openSearchUser,
+    context.serviceAccounts.openSearchPass
+  );
 
   event.Records.forEach((record) => {
     console.log('Record', record);
@@ -39,7 +102,7 @@ async function batch(event: SQSEvent, context: Context): Promise<SQSBatchRespons
     }
 
     if (!queued[table]) {
-      queued[table] = { index, ids };
+      queued[table] = { index, ids, batchId: record.messageId };
       return;
     }
   
@@ -65,9 +128,10 @@ async function batch(event: SQSEvent, context: Context): Promise<SQSBatchRespons
 }
 
 const handler = middy(batch).use([
+  errorLogger(),
   secretsManager({
     fetchData: {
-      serviceAccounts: 'dev/service-graph/ingest'
+      serviceAccounts: process.env.INTEGRATION_SECRETS_ID ?? '',
     },
     awsClientOptions: {
       region: 'us-east-2'
@@ -76,7 +140,7 @@ const handler = middy(batch).use([
   })
 ]);
 
-export default handler;
+exports.handler = handler;
 
 /**
  * Load and validate secrets from Secrets Manager.

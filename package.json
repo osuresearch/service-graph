@@ -8,15 +8,14 @@
   },
   "scripts": {
     "build:cdk": "tsc ./bin/*.ts ./lib/*.ts ",
-    "build": "yarn workspaces foreach -vt run build",
-    "clean": "yarn workspaces foreach -v run clean",
+    "build": "yarn build:cdk && yarn workspaces foreach -vt run build",
+    "clean:cdk": "rimraf -i -g \"./{bin,lib}/*.js\" \"./{bin,lib}/*.d.ts\"",
+    "clean": "yarn clean:cdk && yarn workspaces foreach -v run clean",
     "test": "jest --setupFiles dotenv/config",
     "watch": "tsc --watch",
     "check": "tsc --noEmit",
-    "predeploy": "yarn build",
-    "deploy:dev": "tsc && cdk deploy --context env=dev --all",
-    "destroy:dev": "cdk destroy --context env=dev --all",
-    "postdeploy": "rm -rf cdk-out"
+    "deploy:dev": "yarn build && cdk deploy --context env=dev --all --hotswap-fallback",
+    "destroy:dev": "cdk destroy --context env=dev --all"
   },
   "keywords": [],
   "author": "Chase McManning <mcmanning.1@osu.edu>",
@@ -44,6 +43,7 @@
     "@types/node": "^18.15.10",
     "aws-cdk": "^2.70.0",
     "jest": "^29.5.0",
+    "rimraf": "^5.0.1",
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.1"
   },

@@ -6,22 +6,21 @@ import { resolve } from 'path';
 // Connection pool used for subsequent requests
 let connectionPool: ConnectionPool | undefined;
 
-export async function connect() {
+export async function connect(
+  server?: string,
+  user?: string,
+  password?: string,
+  database?: string
+) {
   if (connectionPool?.connected) {
     return connectionPool;
   }
 
-  const server = process.env.DATABASE_HOST as string;
-  const user = process.env.DATABASE_USER as string;
-  const password = process.env.DATABASE_PASS as string;
-  const database = process.env.DATABASE_NAME as string;
-  const xrayEnabled = process.env.AWS_XRAY_ENABLED === 'true';
-
   const config: sql.config = {
-    server,
-    user,
-    password,
-    database,
+    server: server ?? process.env.DATABASE_HOST as string,
+    user: user ?? process.env.DATABASE_USER as string,
+    password: password ?? process.env.DATABASE_PASS as string,
+    database: database ?? process.env.DATABASE_NAME as string,
     pool: {
       max: 10,
       min: 0,
@@ -34,6 +33,8 @@ export async function connect() {
     // See: https://www.npmjs.com/package/mssql#json-support
     parseJSON: true
   }
+
+  const xrayEnabled = process.env.AWS_XRAY_ENABLED === 'true';
 
   const segment = xrayEnabled && XRay.getSegment();
   const subsegment = segment && segment.addNewSubsegment('MSSQL Connect');
@@ -75,6 +76,8 @@ export type BatchCallback = (rows: any[]) => Promise<void>
  * @returns
  */
 export async function batch(query: string, onBatch: BatchCallback, batchSize: number = 1000) {
+  console.log('Batch', query);
+  
   const promise = new Promise<void>(async (resolve, reject) => {
     const conn = await connect();
 
